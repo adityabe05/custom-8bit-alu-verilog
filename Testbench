@@ -1,0 +1,78 @@
+`timescale 1ns / 1ps
+
+module tb_codeconversion;
+
+    reg [7:0] A, B;
+    reg Sub;
+    reg [3:0] Opval;
+
+    wire [7:0] Op1, Op2;
+    wire Z, N, C, V;
+
+    // DUT
+    codeconversion dut (
+        .A(A),
+        .B(B),
+        .Sub(Sub),
+        .Opval(Opval),
+        .Op1(Op1),
+        .Op2(Op2),
+        .Z(Z),
+        .N(N),
+        .C(C),
+        .V(V)
+    );
+
+    task wait_settle;
+        begin
+            #10;   // allow full combinational settle
+        end
+    endtask
+
+    initial begin
+        // ---------- INIT ----------
+        A = 0;
+        B = 0;
+        Sub = 0;
+        Opval = 0;
+        wait_settle;
+
+        // ---------- ADD ----------
+        A = 8'd15;
+        B = 8'd10;
+        Sub = 0;
+        Opval = 4'b0000;
+        wait_settle;
+
+        // ---------- SUB ----------
+        A = 8'd25;
+        B = 8'd5;
+        Sub = 1;
+        Opval = 4'b0000;
+        wait_settle;
+
+        // ---------- MUL ----------
+        A = 8'd7;
+        B = 8'd6;
+        Sub = 0;
+        Opval = 4'b0010;
+        wait_settle;
+
+        // ---------- DIV ----------
+        A = 8'd20;
+        B = 8'd4;
+        Sub = 0;
+        Opval = 4'b0001;
+        wait_settle;
+
+        // ---------- ZERO ----------
+        A = 8'd0;
+        B = 8'd0;
+        Sub = 0;
+        Opval = 4'b0000;
+        wait_settle;
+
+        $finish;
+    end
+
+endmodule
