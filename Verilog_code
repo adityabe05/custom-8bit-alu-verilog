@@ -1,0 +1,332 @@
+`timescale 1ns / 1ps
+////////////////////////////////////////////////////////////////////////////////// 
+// Company: 
+// Engineer: 
+// Create Date: 21.12.2025 13:20:01 
+// Design Name: 
+// Module Name: codeconversion 
+// Project Name:
+// Target Devices:
+// Tool Versions:
+// Description: 
+// Dependencies: 
+// Revision:
+// Revision 0.01 - File Created 
+// Additional Comments: 
+// //////////////////////////////////////////////////////////////////////////////////
+
+////// half adder and full adder 
+module full_adder (
+input  wire a,
+input  wire b,
+input  wire cin,
+output wire sum,
+output wire cout
+);
+assign sum  = a ^ b ^ cin;
+assign cout = (a & b) | (b & cin) | (a & cin);
+endmodule
+
+module half_adder (
+input  wire a,
+input  wire b,
+output wire sum,
+output wire cout
+);
+assign sum  = a ^ b;
+assign cout = a & b;
+endmodule
+
+// 4-bit Carry Look-Ahead Adder 
+module cla_4bit (
+input  [3:0] a,
+input  [3:0] b,
+input cin,
+output [3:0] sum,
+output cout
+);
+wire [3:0] p, g;
+wire c1, c2, c3;
+assign p = a ^ b;  
+assign g = a & b;
+assign c1 = g[0] | (p[0] & cin);
+assign c2 = g[1] | (p[1] & g[0]) | (p[1] & p[0] & cin);
+assign c3 = g[2] | (p[2] & g[1]) | (p[2] & p[1] & g[0]) | (p[2] & p[1] & p[0] & cin);
+assign cout = g[3] | (p[3] & g[2]) | (p[3] & p[2] & g[1]) | (p[3] & p[2] & p[1] & g[0]) | (p[3] & p[2] & p[1] & p[0] & cin);
+assign sum[0] = p[0] ^ cin;
+assign sum[1] = p[1] ^ c1;
+assign sum[2] = p[2] ^ c2;
+assign sum[3] = p[3] ^ c3;
+endmodule
+
+
+
+//////////////// Adder, Subtractor
+//// takes values of sub from useran ddecide to add or subtract (add if sub=0 and subtract if sub = 1)
+
+module alu_8bit(
+input  [7:0] a,
+input  [7:0] b,
+input sub,     
+output [7:0] result,
+output cout
+);
+wire [7:0] b_comp;
+wire cin;
+assign b_comp = b ^ {8{sub}}; // invert b if sub=1
+assign cin = sub;             // cin=1 for subtraction
+wire c4;
+cla_4bit cla_low (.a(a[3:0]),.b(b_comp[3:0]),.cin(cin),.sum(result[3:0]),.cout(c4));
+cla_4bit cla_high (.a(a[7:4]),.b(b_comp[7:4]),.cin(c4),.sum(result[7:4]),.cout(cout));
+endmodule
+
+//////////multiplier
+module multiplier(a,b,mul);
+input [7:0] a,b;
+output wire [15:0] mul;
+wire [15:0] mul0, mul1;
+reg [7:0] mul2, mul3, mul4, mul5, mul6, mul7;
+assign mul0[0] = a[0]&b[0];
+assign mul0[1] = a[0]&b[1];
+assign mul0[2] = a[0]&b[2];
+assign mul0[3] = a[0]&b[3];
+assign mul0[4] = a[0]&b[4];
+assign mul0[5] = a[0]&b[5];
+assign mul0[6] = a[0]&b[6];
+assign mul0[7] = a[0]&b[7];
+
+assign mul1[0] = a[1]&b[0];
+assign mul1[1] = a[1]&b[1];
+assign mul1[2] = a[1]&b[2];
+assign mul1[3] = a[1]&b[3];
+assign mul1[4] = a[1]&b[4];
+assign mul1[5] = a[1]&b[5];
+assign mul1[6] = a[1]&b[6];
+assign mul1[7] = a[1]&b[7];
+reg [7:0] mul2;
+integer i;
+always @(*) begin
+for (i=0; i<8; i=i+1) begin
+mul2[i] = a[2] & b[i];
+mul3[i] = a[3] & b[i];
+mul4[i] = a[4] & b[i];
+mul5[i] = a[5] & b[i];
+mul6[i] = a[6] & b[i];
+mul7[i] = a[7] & b[i];
+end
+end
+assign mul[0] = mul0[0];
+wire c1_0, s1_0;
+half_adder ha1 (.a(mul0[1]), .b(mul1[0]), .sum(s1_0), .cout(c1_0));
+assign mul[1] = s1_0;
+wire c2_0, s2_0;
+full_adder fa2 (.a(mul0[2]), .b(mul1[1]), .cin(mul2[0]), .sum(s2_0), .cout(c2_0));
+wire c2_1, s2_1;
+half_adder ha2 (.a(s2_0), .b(c1_0), .sum(s2_1), .cout(c2_1));
+assign mul[2] = s2_1;
+wire c3_0, c3_1, c3_2, s3_0, s3_1, s3_2;
+full_adder fa3_0 (.a(mul0[3]), .b(mul1[2]), .cin(mul2[1]), .sum(s3_0), .cout(c3_0));
+full_adder fa3_1 (.a(s3_0), .b(mul3[0]), .cin(c2_0), .sum(s3_1), .cout(c3_1));
+half_adder ha3_2 (.a(s3_1), .b(c2_1), .sum(s3_2), .cout(c3_2));
+assign mul[3] = s3_2;
+
+wire c4_0, c4_1, c4_2, c4_3, s4_0, s4_1, s4_2, s4_3;
+full_adder fa4_0 (.a(mul0[4]), .b(mul1[3]), .cin(mul2[2]), .sum(s4_0), .cout(c4_0));
+full_adder fa4_1 (.a(s4_0), .b(mul3[1]), .cin(mul4[0]), .sum(s4_1), .cout(c4_1));
+full_adder fa4_2 (.a(s4_1), .b(c3_0), .cin(c3_1), .sum(s4_2), .cout(c4_2));
+half_adder ha4_3 (.a(s4_2), .b(c3_2), .sum(s4_3), .cout(c4_3));
+assign mul[4] = s4_3;
+wire c5_0, c5_1, c5_2, c5_3, c5_4, s5_0, s5_1, s5_2, s5_3, s5_4;
+full_adder fa5_0 (.a(mul0[5]), .b(mul1[4]), .cin(mul2[3]), .sum(s5_0), .cout(c5_0));
+full_adder fa5_1 (.a(s5_0), .b(mul3[2]), .cin(mul4[1]), .sum(s5_1), .cout(c5_1));
+full_adder fa5_2 (.a(s5_1), .b(mul5[0]), .cin(c4_0), .sum(s5_2), .cout(c5_2));
+full_adder fa5_3 (.a(s5_2), .b(c4_1), .cin(c4_2), .sum(s5_3), .cout(c5_3));
+half_adder ha5_4 (.a(s5_3), .b(c4_3), .sum(s5_4), .cout(c5_4));
+assign mul[5] = s5_4;
+
+wire c6_0, c6_1, c6_2, c6_3, c6_4, c6_5, s6_0, s6_1, s6_2, s6_3, s6_4, s6_5;
+full_adder fa6_0 (.a(mul0[6]), .b(mul1[5]), .cin(mul2[4]), .sum(s6_0), .cout(c6_0));
+full_adder fa6_1 (.a(s6_0), .b(mul3[3]), .cin(mul4[2]), .sum(s6_1), .cout(c6_1));
+full_adder fa6_2 (.a(s6_1), .b(mul5[1]), .cin(mul6[0]), .sum(s6_2), .cout(c6_2));
+full_adder fa6_3 (.a(s6_2), .b(c5_0), .cin(c5_1), .sum(s6_3), .cout(c6_3));
+full_adder fa6_4 (.a(s6_3), .b(c5_2), .cin(c5_3), .sum(s6_4), .cout(c6_4));
+half_adder ha6_5 (.a(s6_4), .b(c5_4), .sum(s6_5), .cout(c6_5));
+assign mul[6] = s6_5;
+
+wire c7_0, c7_1, c7_2, c7_3, c7_4, c7_5, c7_6, s7_0, s7_1, s7_2, s7_3, s7_4, s7_5, s7_6;
+full_adder fa7_0 (.a(mul0[7]), .b(mul1[6]), .cin(mul2[5]), .sum(s7_0), .cout(c7_0));
+full_adder fa7_1 (.a(s7_0), .b(mul3[4]), .cin(mul4[3]), .sum(s7_1), .cout(c7_1));
+full_adder fa7_2 (.a(s7_1), .b(mul5[2]), .cin(mul6[1]), .sum(s7_2), .cout(c7_2));
+full_adder fa7_3 (.a(s7_2), .b(mul7[0]), .cin(c6_0), .sum(s7_3), .cout(c7_3));
+full_adder fa7_4 (.a(s7_3), .b(c6_1), .cin(c6_2), .sum(s7_4), .cout(c7_4));
+full_adder fa7_5 (.a(s7_4), .b(c6_3), .cin(c6_4), .sum(s7_5), .cout(c7_5));
+half_adder ha7_6 (.a(s7_5), .b(c6_5), .sum(s7_6), .cout(c7_6));
+assign mul[7] = s7_6;
+    
+
+wire c8_0, c8_1, c8_2, c8_3, c8_4, c8_5, c8_6, s8_0, s8_1, s8_2, s8_3, s8_4, s8_5, s8_6;
+full_adder fa8_0 (.a(mul1[7]), .b(mul2[6]), .cin(mul3[5]), .sum(s8_0), .cout(c8_0));
+full_adder fa8_1 (.a(s8_0), .b(mul4[4]), .cin(mul5[3]), .sum(s8_1), .cout(c8_1));
+full_adder fa8_2 (.a(s8_1), .b(mul6[2]), .cin(mul7[1]), .sum(s8_2), .cout(c8_2));
+full_adder fa8_3 (.a(s8_2), .b(c7_0), .cin(c7_1), .sum(s8_3), .cout(c8_3));
+full_adder fa8_4 (.a(s8_3), .b(c7_2), .cin(c7_3), .sum(s8_4), .cout(c8_4));
+full_adder fa8_5 (.a(s8_4), .b(c7_4), .cin(c7_5), .sum(s8_5), .cout(c8_5));
+half_adder ha8_6 (.a(s8_5), .b(c7_6), .sum(s8_6), .cout(c8_6));
+assign mul[8] = s8_6;
+
+wire c9_0, c9_1, c9_2, c9_3, c9_4, c9_5, c9_6, s9_0, s9_1, s9_2, s9_3, s9_4, s9_5, s9_6;
+full_adder fa9_0 (.a(mul2[7]), .b(mul3[6]), .cin(mul4[5]), .sum(s9_0), .cout(c9_0));
+full_adder fa9_1 (.a(s9_0), .b(mul5[4]), .cin(mul6[3]), .sum(s9_1), .cout(c9_1));
+full_adder fa9_2 (.a(s9_1), .b(mul7[2]), .cin(c8_0), .sum(s9_2), .cout(c9_2));
+full_adder fa9_3 (.a(s9_2), .b(c8_1), .cin(c8_2), .sum(s9_3), .cout(c9_3));
+full_adder fa9_4 (.a(s9_3), .b(c8_3), .cin(c8_4), .sum(s9_4), .cout(c9_4));
+full_adder fa9_5 (.a(s9_4), .b(c8_5), .cin(c8_6), .sum(s9_5), .cout(c9_5));
+assign mul[9] = s9_5;
+
+wire c10_0, c10_1, c10_2, c10_3, c10_4, c10_5, s10_0, s10_1, s10_2, s10_3, s10_4, s10_5;
+full_adder fa10_0 (.a(mul3[7]), .b(mul4[6]), .cin(mul5[5]), .sum(s10_0), .cout(c10_0));
+full_adder fa10_1 (.a(s10_0), .b(mul6[4]), .cin(mul7[3]), .sum(s10_1), .cout(c10_1));
+full_adder fa10_3 (.a(s10_2), .b(c9_2), .cin(c9_3), .sum(s10_3), .cout(c10_3));
+full_adder fa10_4 (.a(s10_3), .b(c9_4), .cin(c9_5), .sum(s10_4), .cout(c10_4));
+half_adder ha10_5 (.a(s10_4), .b(c9_6), .sum(s10_5), .cout(c10_5));
+assign mul[10] = s10_5;
+wire c11_0, c11_1, c11_2, c11_3, c11_4, s11_0, s11_1, s11_2, s11_3, s11_4;
+full_adder fa11_0 (.a(mul4[7]), .b(mul5[6]), .cin(mul6[5]), .sum(s11_0), .cout(c11_0));
+full_adder fa11_1 (.a(s11_0), .b(mul7[4]), .cin(c10_0), .sum(s11_1), .cout(c11_1));
+full_adder fa11_2 (.a(s11_1), .b(c10_1), .cin(c10_2), .sum(s11_2), .cout(c11_2));
+full_adder fa11_3 (.a(s11_2), .b(c10_3), .cin(c10_4), .sum(s11_3), .cout(c11_3));
+half_adder ha11_4 (.a(s11_3), .b(c10_5), .sum(s11_4), .cout(c11_4));
+assign mul[11] = s11_4;
+wire c12_0, c12_1, c12_2, c12_3, s12_0, s12_1, s12_2, s12_3;
+full_adder fa12_0 (.a(mul5[7]), .b(mul6[6]), .cin(mul7[5]), .sum(s12_0), .cout(c12_0));
+full_adder fa12_1 (.a(s12_0), .b(c11_0), .cin(c11_1), .sum(s12_1), .cout(c12_1));
+full_adder fa12_2 (.a(s12_1), .b(c11_2), .cin(c11_3), .sum(s12_2), .cout(c12_2));
+half_adder ha12_3 (.a(s12_2), .b(c11_4), .sum(s12_3), .cout(c12_3));
+assign mul[12] = s12_3;
+wire c13_0, c13_1, c13_2, s13_0, s13_1, s13_2;
+full_adder fa13_0 (.a(mul6[7]), .b(mul7[6]), .cin(c12_0), .sum(s13_0), .cout(c13_0));
+full_adder fa13_1 (.a(s13_0), .b(c12_1), .cin(c12_2), .sum(s13_1), .cout(c13_1));
+half_adder ha13_2 (.a(s13_1), .b(c12_3), .sum(s13_2), .cout(c13_2));
+assign mul[13] = s13_2;
+wire c14_0, c14_1, s14_0, s14_1;
+full_adder fa14_0 (.a(mul7[7]), .b(c13_0), .cin(c13_1), .sum(s14_0), .cout(c14_0));
+half_adder ha14_1 (.a(s14_0), .b(c13_2), .sum(s14_1), .cout(c14_1));
+assign mul[14] = s14_1;
+assign mul[15] = c14_0 | c14_1;
+endmodule
+
+//////divider
+module divider(
+input  [7:0] a,       // Dividend
+input  [7:0] b,       // Divisor
+output reg [15:0] mul // Output: a * (1/b) scaled
+);
+
+reg [15:0] quotient;
+reg [15:0] remainder;
+reg [15:0] dividend_shifted;
+integer i;
+always @(*) begin
+//Initialize
+quotient = 16'd0;
+remainder = 16'd0;
+dividend_shifted = {8'd0, a}; // to make sure we dont loos data while shifting
+if (b == 0) begin
+mul = 16'hFFFF; // Or set to max value
+end 
+
+else begin
+for (i = 15; i >= 0; i = i - 1) begin
+remainder = (remainder << 1) | ((dividend_shifted >> i) & 1'b1); 
+if (remainder >= b) begin
+remainder = remainder - b;
+quotient[i] = 1'b1;
+end 
+else begin
+quotient[i] = 1'b0;
+end
+end
+ // Multiply quotient by 2^4 (scaling)
+mul = quotient << 4;
+end
+end
+endmodule
+
+module codeconversion (
+    input  [7:0] A, B,
+    input        Sub,
+    input  [3:0] Opval,
+
+    output reg [7:0] Op1,   // Result LSB
+    output reg [7:0] Op2,   // Result MSB / auxiliary
+
+    output reg Z,           // Zero
+    output reg N,           // Negative
+    output reg C,           // Carry
+    output reg V            // Overflow (disabled)
+);
+
+    wire [7:0] alu_result;
+    wire alu_cout;
+
+    wire [15:0] mul;
+    wire [15:0] mul1;
+
+    // ALU
+    alu_8bit alu11 (
+        .a(A),
+        .b(B),
+        .sub(Sub),
+        .result(alu_result),
+        .cout(alu_cout)
+    );
+
+    // Divider and Multiplier
+    divider    d1 (.a(A), .b(B), .mul(mul));
+    multiplier m1 (.a(A), .b(B), .mul(mul1));
+
+    always @(*) begin
+        // -------- defaults --------
+        Op1 = 8'd0;
+        Op2 = 8'd0;
+
+        Z = 1'b0;
+        N = 1'b0;
+        C = 1'b0;
+        V = 1'b0;   // overflow completely removed
+
+        case (Opval)
+            4'b0000: begin   // ALU ADD / SUB
+                Op1 = alu_result;
+                Op2 = 8'd0;
+
+                Z = (alu_result == 8'd0);
+                N = alu_result[7];
+                C = alu_cout;
+                V = 1'b0;    // explicitly disabled
+            end
+
+            4'b0001: begin   // Divider
+                Op1 = mul[7:0];
+                Op2 = mul[15:8];
+
+                Z = (mul == 16'd0);
+                N = mul[15];
+            end
+
+            4'b0010: begin   // Multiplier
+                Op1 = mul1[7:0];
+                Op2 = mul1[15:8];
+
+                Z = (mul1 == 16'd0);
+                N = mul1[15];
+            end
+
+            default: begin
+                // keep defaults
+            end
+        endcase
+    end
+
+endmodule
+
